@@ -118,298 +118,154 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl animate-fade-in">
-      {/* ═══ MOBILE-FIRST WALLET HOME (MetaMask style) ═══ */}
-      <div className="lg:hidden">
-        {/* Account chip */}
-        <div className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-black"
-              style={{
-                background: `linear-gradient(135deg, ${network.color}, #fff)`,
-              }}
-            >
-              {(user?.username || 'U')[0].toUpperCase()}
-            </div>
-            <div>
-              <p className="text-sm font-semibold">{user?.username}</p>
-              <button
-                type="button"
-                onClick={onCopy}
-                className="flex items-center gap-1 font-mono text-[11px] text-white/45 hover:text-white"
+      <div>
+        {/* ═══ MOBILE ═══ */}
+        <div className="lg:hidden">
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-black ring-2 ring-emerald-400/40 shadow-[0_0_20px_rgba(34,197,94,0.35)]"
+                style={{
+                  background: `linear-gradient(135deg, ${network.color}, #86efac)`,
+                }}
               >
-                {shortAddress(primaryAddress, 6, 4)}
-                <Copy className="h-3 w-3" />
-              </button>
+                {(user?.username || 'U')[0].toUpperCase()}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-emerald-50">{user?.username}</p>
+                <button
+                  type="button"
+                  onClick={onCopy}
+                  className="flex items-center gap-1 font-mono text-[11px] text-emerald-200/50 hover:text-emerald-100"
+                >
+                  {shortAddress(primaryAddress, 6, 4)}
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleHideBalances}
-            className="rounded-full border border-white/10 p-2 text-white/50"
-          >
-            {hideBalances ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-
-        {/* Balance hero */}
-        <div className="mb-6 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/35">Total balance</p>
-          <p className="mt-2 text-4xl font-semibold tracking-tight">
-            {loading ? '—' : mask(formatUsd(totalUsd))}
-          </p>
-          <p className="mt-1 text-xs text-white/40">{network.name} network</p>
-        </div>
-
-        {/* Quick actions — big app-like buttons */}
-        <div className="mb-6 grid grid-cols-4 gap-2">
-          {[
-            { to: '/app/send', label: 'Send', icon: ArrowUpRight },
-            { to: '/app/receive', label: 'Receive', icon: ArrowDownLeft },
-            { to: '/app/connect', label: 'Connect', icon: Link2 },
-            { to: '/app/receive', label: 'Scan', icon: Scan },
-          ].map(({ to, label, icon: Icon }) => (
-            <Link
-              key={label}
-              to={to}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-2 py-3 transition active:scale-95 hover:bg-white/[0.06]"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black">
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="text-[11px] font-medium text-white/80">{label}</span>
-            </Link>
-          ))}
-        </div>
-
-        {/* Tokens */}
-        <div className="x-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-            <h2 className="text-sm font-medium">Tokens</h2>
             <button
               type="button"
-              onClick={() => load(true)}
-              className="text-white/40 hover:text-white"
+              onClick={toggleHideBalances}
+              className="glass-btn p-2.5"
             >
-              <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+              {hideBalances ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <div className="divide-y divide-white/[0.05]">
-            {tokens.map((t) => (
+
+          {/* Balance hero — open on neon bg (no glass box) */}
+          <div className="mb-6 px-2 py-4 text-center">
+            <p className="text-xs uppercase tracking-[0.2em] dash-muted">Total balance</p>
+            <p className="dash-title-glow mt-2 text-4xl font-semibold tracking-tight text-emerald-50">
+              {loading ? '—' : mask(formatUsd(totalUsd))}
+            </p>
+            <p className="mt-1 text-xs text-emerald-300/50">{network.name} network</p>
+          </div>
+
+          <div className="mb-6 grid grid-cols-4 gap-2">
+            {[
+              { to: '/app/send', label: 'Send', icon: ArrowUpRight },
+              { to: '/app/receive', label: 'Receive', icon: ArrowDownLeft },
+              { to: '/app/connect', label: 'Connect', icon: Link2 },
+              { to: '/app/receive', label: 'Scan', icon: Scan },
+            ].map(({ to, label, icon: Icon }) => (
               <Link
-                key={t.symbol}
-                to="/app/send"
-                className="flex items-center gap-3 px-4 py-3.5 active:bg-white/[0.04]"
+                key={label}
+                to={to}
+                className="glass-card flex flex-col items-center gap-2 px-2 py-3 transition active:scale-95 hover:border-emerald-400/30"
               >
-                {t.image ? (
-                  <img src={t.image} alt="" className="h-10 w-10 rounded-full" />
-                ) : (
-                  <span
-                    className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-xs font-bold',
-                      t.color
-                    )}
-                  >
-                    {t.symbol[0]}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{t.name}</p>
-                    <p className="font-mono text-sm">
-                      {mask(
-                        formatUsd(t.usd)
-                      )}
-                    </p>
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-white/40">
-                    <span className="font-mono">
-                      {mask(formatBalance(t.balance, t.symbol === 'USDT' ? 2 : 6))} {t.symbol}
-                    </span>
-                    {t.change != null && (
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-0.5',
-                          t.change >= 0 ? 'text-emerald-400' : 'text-red-400'
-                        )}
-                      >
-                        {t.change >= 0 ? (
-                          <TrendingUp className="h-3 w-3" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3" />
-                        )}
-                        {Number(t.change).toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-white/20" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-black shadow-[0_0_16px_rgba(34,197,94,0.45)]">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="text-[11px] font-medium text-emerald-100/80">{label}</span>
               </Link>
             ))}
           </div>
-        </div>
 
-        {/* Recent activity mobile */}
-        <div className="mt-4 x-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-            <h2 className="text-sm font-medium">Recent activity</h2>
-            <Link to="/app/activity" className="text-xs text-white/40 hover:text-white">
-              See all
-            </Link>
-          </div>
-          {txs.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-white/35">No activity yet</p>
-          ) : (
-            <div className="divide-y divide-white/[0.05]">
-              {txs.map((tx) => {
-                const recv = (tx.transaction_type || '').toLowerCase() === 'received'
-                return (
-                  <div key={tx.txid + tx.date} className="flex items-center gap-3 px-4 py-3">
+          <div className="glass-card overflow-hidden">
+            <div className="flex items-center justify-between border-b dash-divider px-4 py-3">
+              <h2 className="text-sm font-medium text-emerald-50">Tokens</h2>
+              <button
+                type="button"
+                onClick={() => load(true)}
+                className="text-emerald-300/50 hover:text-emerald-200"
+              >
+                <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+              </button>
+            </div>
+            <div className="divide-y divide-emerald-500/10">
+              {tokens.map((t) => (
+                <Link
+                  key={t.symbol}
+                  to="/app/send"
+                  className="flex items-center gap-3 px-4 py-3.5 active:bg-emerald-500/5"
+                >
+                  {t.image ? (
+                    <img src={t.image} alt="" className="h-10 w-10 rounded-full ring-1 ring-emerald-400/20" />
+                  ) : (
                     <span
                       className={cn(
-                        'flex h-9 w-9 items-center justify-center rounded-full border',
-                        recv
-                          ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                          : 'border-white/10 bg-white/5'
+                        'flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-xs font-bold ring-1 ring-emerald-400/20',
+                        t.color
                       )}
                     >
-                      {recv ? (
-                        <ArrowDownLeft className="h-4 w-4" />
-                      ) : (
-                        <ArrowUpRight className="h-4 w-4" />
-                      )}
+                      {t.symbol[0]}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm">{tx.transaction_type}</p>
-                      <p className="text-[11px] text-white/35">{formatDate(tx.date)}</p>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-emerald-50">{t.name}</p>
+                      <p className="font-mono text-sm text-emerald-50/90">
+                        {mask(formatUsd(t.usd))}
+                      </p>
                     </div>
-                    <p className={cn('font-mono text-sm', recv && 'text-emerald-300')}>
-                      {recv ? '+' : '−'}
-                      {mask(formatBalance(tx.amount, 4))}
-                    </p>
+                    <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-emerald-200/40">
+                      <span className="font-mono">
+                        {mask(formatBalance(t.balance, t.symbol === 'USDT' ? 2 : 6))} {t.symbol}
+                      </span>
+                      {t.change != null && (
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-0.5',
+                            t.change >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          )}
+                        >
+                          {t.change >= 0 ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3" />
+                          )}
+                          {Number(t.change).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )
-              })}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-emerald-500/30" />
+                </Link>
+              ))}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* ═══ DESKTOP LAYOUT ═══ */}
-      <div className="hidden space-y-6 lg:block">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/40">Portfolio</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-              {loading ? '—' : formatUsd(totalUsd)}
-            </h1>
-            <button
-              type="button"
-              onClick={onCopy}
-              className="mt-2 inline-flex items-center gap-1.5 font-mono text-xs text-white/45 hover:text-white"
-            >
-              <QrCode className="h-3.5 w-3.5" />
-              {shortAddress(primaryAddress, 10, 8)}
-              <Copy className="h-3 w-3" />
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => load(true)}
-              className="x-btn-secondary"
-              disabled={refreshing}
-            >
-              <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-              Refresh
-            </button>
-            <Link to="/app/send" className="x-btn-primary">
-              <ArrowUpRight className="h-4 w-4" /> Send
-            </Link>
-            <Link to="/app/receive" className="x-btn-secondary">
-              <ArrowDownLeft className="h-4 w-4" /> Receive
-            </Link>
-            <Link to="/app/connect" className="x-btn-secondary">
-              <Link2 className="h-4 w-4" /> Connect
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {tokens.map((t) => (
-            <div
-              key={t.symbol}
-              className={cn(
-                'x-card-solid relative overflow-hidden p-4 bg-gradient-to-br',
-                t.color
-              )}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-white/45">{t.name}</p>
-                  <p className={cn('mt-1 font-mono text-lg font-medium', t.accent)}>
-                    {loading ? '…' : formatBalance(t.balance, t.symbol === 'USDT' ? 2 : 8)}
-                  </p>
-                  <p className="mt-1 text-xs text-white/40">{formatUsd(t.usd)}</p>
-                </div>
-                <span className="rounded-full border border-white/10 bg-black/40 px-2 py-0.5 font-mono text-[10px]">
-                  {t.symbol}
-                </span>
-              </div>
+          <div className="glass-card mt-4 overflow-hidden">
+            <div className="flex items-center justify-between border-b dash-divider px-4 py-3">
+              <h2 className="text-sm font-medium text-emerald-50">Recent activity</h2>
+              <Link to="/app/activity" className="text-xs text-emerald-300/50 hover:text-emerald-200">
+                See all
+              </Link>
             </div>
-          ))}
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-5 lg:grid-rows-[minmax(480px,1fr)]">
-          <div className="x-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-3">
-            <div className="mb-2 shrink-0 px-2 pt-1">
-              <h2 className="text-sm font-medium">Markets</h2>
-              <p className="text-[11px] text-white/35">TradingView chart</p>
-            </div>
-            <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-xl border border-white/[0.08] bg-black/50">
-              <div className="absolute inset-0">
-                <TradingViewChart fill />
-              </div>
-            </div>
-          </div>
-          <div className="x-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-2">
-            <div className="mb-2 shrink-0 px-2 pt-1">
-              <h2 className="text-sm font-medium">Crypto news</h2>
-              <p className="text-[11px] text-white/35">TradingView timeline</p>
-            </div>
-            <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-xl border border-white/[0.08] bg-black/50">
-              <div className="absolute inset-0">
-                <TradingViewNews height="100%" fill />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="x-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-            <h2 className="text-sm font-medium">Recent activity</h2>
-            <Link to="/app/activity" className="text-xs text-white/40 hover:text-white">
-              View all
-            </Link>
-          </div>
-          {txs.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-white/35">No transactions yet</p>
-          ) : (
-            <div className="divide-y divide-white/[0.05]">
-              {txs.map((tx) => {
-                const recv = (tx.transaction_type || '').toLowerCase() === 'received'
-                return (
-                  <div
-                    key={tx.txid + tx.date}
-                    className="flex items-center justify-between gap-4 px-5 py-3.5"
-                  >
-                    <div className="flex items-center gap-3">
+            {txs.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-emerald-200/35">No activity yet</p>
+            ) : (
+              <div className="divide-y divide-emerald-500/10">
+                {txs.map((tx) => {
+                  const recv = (tx.transaction_type || '').toLowerCase() === 'received'
+                  return (
+                    <div key={tx.txid + tx.date} className="flex items-center gap-3 px-4 py-3">
                       <span
                         className={cn(
                           'flex h-9 w-9 items-center justify-center rounded-full border',
                           recv
-                            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                            : 'border-white/10 bg-white/5'
+                            ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300'
+                            : 'border-emerald-500/15 bg-black/30 text-emerald-100/70'
                         )}
                       >
                         {recv ? (
@@ -418,22 +274,161 @@ export default function Dashboard() {
                           <ArrowUpRight className="h-4 w-4" />
                         )}
                       </span>
-                      <div>
-                        <p className="text-sm font-medium">{tx.transaction_type}</p>
-                        <p className="font-mono text-xs text-white/35">
-                          {shortAddress(tx.txid, 10, 8)} · {formatDate(tx.date)}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-emerald-50">{tx.transaction_type}</p>
+                        <p className="text-[11px] text-emerald-200/35">{formatDate(tx.date)}</p>
                       </div>
+                      <p className={cn('font-mono text-sm', recv ? 'text-emerald-300' : 'text-emerald-50/80')}>
+                        {recv ? '+' : '−'}
+                        {mask(formatBalance(tx.amount, 4))}
+                      </p>
                     </div>
-                    <p className={cn('font-mono text-sm', recv && 'text-emerald-300')}>
-                      {recv ? '+' : '−'}
-                      {formatBalance(tx.amount)} {tx.coin}
-                    </p>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ═══ DESKTOP ═══ */}
+        <div className="hidden space-y-6 lg:block">
+          {/* Portfolio hero — open on neon bg (no glass rectangle) */}
+          <div className="flex flex-wrap items-end justify-between gap-4 px-1">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] dash-muted">Portfolio</p>
+              <h1 className="dash-title-glow mt-1 text-4xl font-semibold tracking-tight text-emerald-50">
+                {loading ? '—' : formatUsd(totalUsd)}
+              </h1>
+              <button
+                type="button"
+                onClick={onCopy}
+                className="mt-2 inline-flex items-center gap-1.5 font-mono text-xs text-emerald-200/50 hover:text-emerald-100"
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                {shortAddress(primaryAddress, 10, 8)}
+                <Copy className="h-3 w-3" />
+              </button>
             </div>
-          )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => load(true)}
+                className="glass-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                disabled={refreshing}
+              >
+                <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+                Refresh
+              </button>
+              <Link to="/app/send" className="glass-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm">
+                <ArrowUpRight className="h-4 w-4" /> Send
+              </Link>
+              <Link to="/app/receive" className="glass-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm">
+                <ArrowDownLeft className="h-4 w-4" /> Receive
+              </Link>
+              <Link to="/app/connect" className="glass-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm">
+                <Link2 className="h-4 w-4" /> Connect
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {tokens.map((t) => (
+              <div
+                key={t.symbol}
+                className="glass-card relative overflow-hidden p-4 transition hover:border-emerald-400/30 hover:shadow-[0_0_28px_rgba(34,197,94,0.12)]"
+              >
+                <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-emerald-400/10 blur-2xl" />
+                <div className="relative flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] dash-muted">{t.name}</p>
+                    <p className="mt-1 font-mono text-lg font-medium text-emerald-50">
+                      {loading ? '…' : formatBalance(t.balance, t.symbol === 'USDT' ? 2 : 8)}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-200/40">{formatUsd(t.usd)}</p>
+                  </div>
+                  <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] text-emerald-200/90">
+                    {t.symbol}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-5 lg:grid-rows-[minmax(480px,1fr)]">
+            <div className="glass-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-3">
+              <div className="mb-2 shrink-0 px-2 pt-1">
+                <h2 className="text-sm font-medium text-emerald-50">Markets</h2>
+                <p className="text-[11px] dash-muted">TradingView chart</p>
+              </div>
+              <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-xl border border-emerald-500/15 bg-black/40">
+                <div className="absolute inset-0">
+                  <TradingViewChart fill />
+                </div>
+              </div>
+            </div>
+            <div className="glass-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-2">
+              <div className="mb-2 shrink-0 px-2 pt-1">
+                <h2 className="text-sm font-medium text-emerald-50">Crypto news</h2>
+                <p className="text-[11px] dash-muted">TradingView timeline</p>
+              </div>
+              <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-xl border border-emerald-500/15 bg-black/40">
+                <div className="absolute inset-0">
+                  <TradingViewNews height="100%" fill />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card overflow-hidden">
+            <div className="flex items-center justify-between border-b dash-divider px-5 py-4">
+              <h2 className="text-sm font-medium text-emerald-50">Recent activity</h2>
+              <Link to="/app/activity" className="text-xs text-emerald-300/50 hover:text-emerald-200">
+                View all
+              </Link>
+            </div>
+            {txs.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-emerald-200/35">No transactions yet</p>
+            ) : (
+              <div className="divide-y divide-emerald-500/10">
+                {txs.map((tx) => {
+                  const recv = (tx.transaction_type || '').toLowerCase() === 'received'
+                  return (
+                    <div
+                      key={tx.txid + tx.date}
+                      className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-emerald-500/[0.04]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={cn(
+                            'flex h-9 w-9 items-center justify-center rounded-full border',
+                            recv
+                              ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300'
+                              : 'border-emerald-500/15 bg-black/30 text-emerald-100/70'
+                          )}
+                        >
+                          {recv ? (
+                            <ArrowDownLeft className="h-4 w-4" />
+                          ) : (
+                            <ArrowUpRight className="h-4 w-4" />
+                          )}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium text-emerald-50">{tx.transaction_type}</p>
+                          <p className="font-mono text-xs text-emerald-200/35">
+                            {shortAddress(tx.txid, 10, 8)} · {formatDate(tx.date)}
+                          </p>
+                        </div>
+                      </div>
+                      <p className={cn('font-mono text-sm', recv ? 'text-emerald-300' : 'text-emerald-50/85')}>
+                        {recv ? '+' : '−'}
+                        {formatBalance(tx.amount)} {tx.coin}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

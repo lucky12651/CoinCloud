@@ -60,16 +60,19 @@ export default function AppLayout() {
       : []),
   ]
 
-  return (
-    <div className="min-h-screen mesh-bg text-white">
-      {locked && <LockScreen />}
+  // When locked, only show the lock gate — hide entire app chrome
+  if (locked) {
+    return <LockScreen />
+  }
 
-      <div className="flex min-h-screen">
-        {/* Desktop sidebar only — no mobile left menu */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-white/[0.06] bg-black/95 backdrop-blur-xl lg:flex">
-          <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-5">
+  return (
+    <div className="app-neon min-h-screen text-emerald-50">
+      <div className="app-neon-content flex min-h-screen">
+        {/* Desktop glass sidebar */}
+        <aside className="glass-sidebar fixed inset-y-0 left-0 z-40 hidden w-72 flex-col lg:flex">
+          <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-emerald-400/10 px-5">
             <BrandLogo size={36} rounded="rounded-xl" />
-            <Link to="/app" className="text-base font-semibold tracking-tight">
+            <Link to="/app" className="text-base font-semibold tracking-tight text-emerald-50">
               CoinCloud
             </Link>
           </div>
@@ -90,12 +93,12 @@ export default function AppLayout() {
             ))}
           </nav>
 
-          <div className="shrink-0 border-t border-white/[0.06] bg-black p-3.5">
-            <div className="mb-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
-              <p className="truncate text-[0.95rem] font-medium text-white">{user?.username}</p>
-              <p className="truncate text-sm text-white/40">{user?.email}</p>
+          <div className="shrink-0 border-t border-emerald-400/10 p-3.5">
+            <div className="mb-2.5 rounded-xl border border-emerald-400/15 bg-emerald-500/5 p-3.5 backdrop-blur-md">
+              <p className="truncate text-[0.95rem] font-medium text-emerald-50">{user?.username}</p>
+              <p className="truncate text-sm text-emerald-200/45">{user?.email}</p>
               {user?.is_admin && (
-                <span className="mt-2 inline-flex rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs uppercase tracking-wider text-white/70">
+                <span className="mt-2 inline-flex rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-0.5 text-xs uppercase tracking-wider text-emerald-200/90">
                   Admin
                 </span>
               )}
@@ -111,7 +114,7 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={handleLogout}
-              className="sidebar-item w-full text-left text-red-300/80 hover:text-red-200"
+              className="sidebar-item w-full text-left text-red-300/85 hover:text-red-200"
             >
               <LogOut className="h-5 w-5" />
               Sign out
@@ -120,15 +123,14 @@ export default function AppLayout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col lg:pl-72">
-          <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black/85 backdrop-blur-xl">
+          <header className="glass-header sticky top-0 z-30">
             <div className="flex h-14 items-center justify-between gap-3 px-4 lg:px-6">
-              {/* Mobile: brand only — no hamburger menu */}
               <div className="flex min-w-0 items-center gap-2 lg:hidden">
                 <BrandLogo size={28} rounded="rounded-lg" />
-                <span className="truncate text-sm font-semibold">CoinCloud</span>
+                <span className="truncate text-sm font-semibold text-emerald-50">CoinCloud</span>
               </div>
 
-              <div className="hidden text-sm text-white/40 lg:block">
+              <div className="hidden text-sm text-emerald-200/45 lg:block">
                 Self-custody multi-chain wallet
               </div>
 
@@ -136,7 +138,7 @@ export default function AppLayout() {
                 <NetworkSwitcher compact />
               </div>
             </div>
-            <div className="hidden sm:block">
+            <div className="hidden border-t border-emerald-400/10 sm:block">
               <PriceTicker />
             </div>
           </header>
@@ -147,7 +149,6 @@ export default function AppLayout() {
         </div>
       </div>
 
-      {/* Mobile bottom nav only */}
       <BottomNav />
     </div>
   )
