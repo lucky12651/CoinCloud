@@ -1,0 +1,98 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom dark UI utilities */
+.x-container { width: 100%; max-width: 72rem; margin-left: auto; margin-right: auto; padding-left: 1.25rem; padding-right: 1.25rem; }
+@media (min-width: 640px) { .x-container { padding-left: 2rem; padding-right: 2rem; } }
+.x-card { border-radius: 1rem; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); backdrop-filter: blur(8px); }
+.x-card-solid { border-radius: 1rem; border: 1px solid rgba(255,255,255,0.08); background: #0a0a0a; }
+.x-btn, .x-btn-primary, .x-btn-secondary, .x-btn-ghost, .x-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 9999px; padding: 0.625rem 1.25rem; font-size: 0.875rem; font-weight: 500; transition: all 0.2s ease; }
+.x-btn:disabled, .x-btn-primary:disabled, .x-btn-secondary:disabled, .x-btn-ghost:disabled, .x-btn-danger:disabled { opacity: 0.5; pointer-events: none; }
+.x-btn-primary { background: #fff; color: #000; }
+.x-btn-primary:hover { background: rgba(255,255,255,0.9); }
+.x-btn-primary:active { transform: scale(0.98); }
+.x-btn-secondary { border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #fff; }
+.x-btn-secondary:hover { background: rgba(255,255,255,0.06); }
+.x-btn-ghost { color: rgba(255,255,255,0.7); }
+.x-btn-ghost:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.x-btn-danger { border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: #fca5a5; }
+.x-btn-danger:hover { background: rgba(239,68,68,0.2); }
+.x-input { width: 100%; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; font-size: 0.875rem; color: #fff; outline: none; }
+.x-input::placeholder { color: rgba(255,255,255,0.3); }
+.x-input:focus { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
+.x-label { display: block; margin-bottom: 0.375rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+.x-nav-link { font-size: 0.875rem; color: rgba(255,255,255,0.55); transition: color 0.15s ease; }
+.x-nav-link:hover { color: #fff; }
+.sidebar-item { position: relative; display: flex; width: 100%; cursor: pointer; align-items: center; gap: 0.75rem; border-radius: 0.75rem; padding: 0.625rem 0.75rem; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.45); transition: all 0.2s ease; }
+.sidebar-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.sidebar-item-active { color: #fff; background: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+.sidebar-item-active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 2px; height: 55%; border-radius: 999px; background: white; }
+.mesh-bg { background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255,255,255,0.08), transparent), radial-gradient(ellipse 60% 40% at 100% 0%, rgba(255,255,255,0.04), transparent), #000; }
+.grid-fade { background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black, transparent); }
+.text-gradient { background-image: linear-gradient(to bottom, #fff, #fff, rgba(255,255,255,0.5)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+body { background: #000; color: #fff; font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+::selection { background: rgba(255,255,255,0.18); }
+
+/* Infinite price ticker */
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+.ticker-wrap::before,
+.ticker-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  z-index: 2;
+  pointer-events: none;
+}
+.ticker-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, #000, transparent);
+}
+.ticker-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, #000, transparent);
+}
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 0.55rem 0;
+  animation: ticker-scroll 80s linear infinite;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* TradingView dark embeds */
+.tradingview-widget-container {
+  background: transparent !important;
+}
+
+/* Safe area for mobile bottom nav (iOS home indicator) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Fixed sidebar: nav scrolls, footer stays */
+@media (min-width: 1024px) {
+  .sidebar-item {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Mobile app feel */
+@media (max-width: 1023px) {
+  body {
+    overscroll-behavior-y: none;
+  }
+}

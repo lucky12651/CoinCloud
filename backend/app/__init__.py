@@ -1,0 +1,1 @@
+"""CoinCloud FastAPI backend package."""

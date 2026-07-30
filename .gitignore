@@ -1,0 +1,85 @@
+# =============================================================================
+# CoinCloud — Git ignore (public-repo safe)
+# Real secrets must NEVER be committed. Use backend/.env locally only.
+# =============================================================================
+
+# ----- Environment / secrets (critical) -----
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.env
+!.env.example
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+**/.env.local
+**/.env.development.local
+**/.env.production.local
+**/.env.test.local
+
+# Common secret / credential filenames
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*serviceAccount*.json
+secrets/
+.secrets/
+credentials/
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ----- Node / frontend -----
+node_modules/
+.npm
+.pnpm-store/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# ----- Local runtime / databases -----
+instance/
+backend/instance/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+logs/
+
+# bitcoinlib local data (if created under project)
+# wallets.db / bitcoinlib data directories
+**/bitcoinlib/
+
+# ----- OS / IDE -----
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ----- Misc -----
+*.bak
+*.tmp
+.cache/
