@@ -369,11 +369,11 @@ export default function Dashboard() {
             <div className="glass-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-2">
               <div className="mb-2 shrink-0 px-2 pt-1">
                 <h2 className="text-sm font-medium text-emerald-50">Crypto news</h2>
-                <p className="text-[11px] dash-muted">TradingView timeline</p>
+                <p className="text-[11px] dash-muted">TradingView · auto-refreshes every 90s</p>
               </div>
-              <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-xl border border-emerald-500/15 bg-black/40">
-                <div className="absolute inset-0">
-                  <TradingViewNews height="100%" fill />
+              <div className="relative flex min-h-[400px] flex-1 flex-col overflow-hidden rounded-xl border border-emerald-500/15 bg-black/40 p-2">
+                <div className="min-h-0 flex-1">
+                  <TradingViewNews fill />
                 </div>
               </div>
             </div>
