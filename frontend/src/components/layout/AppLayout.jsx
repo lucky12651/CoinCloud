@@ -66,17 +66,17 @@ export default function AppLayout() {
 
       <div className="flex min-h-screen">
         {/* Desktop sidebar only — no mobile left menu */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/[0.06] bg-black/95 backdrop-blur-xl lg:flex">
-          <div className="flex h-14 shrink-0 items-center gap-2 border-b border-white/[0.06] px-5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black">
-              <Wallet className="h-4 w-4" />
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-white/[0.06] bg-black/95 backdrop-blur-xl lg:flex">
+          <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-black">
+              <Wallet className="h-5 w-5" />
             </div>
-            <Link to="/app" className="text-sm font-semibold tracking-tight">
+            <Link to="/app" className="text-base font-semibold tracking-tight">
               CoinCloud
             </Link>
           </div>
 
-          <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-3">
+          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3.5">
             {items.map(({ to, end, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -86,18 +86,18 @@ export default function AppLayout() {
                   cn('sidebar-item', isActive && 'sidebar-item-active')
                 }
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className="h-5 w-5 shrink-0" />
                 {label}
               </NavLink>
             ))}
           </nav>
 
-          <div className="shrink-0 border-t border-white/[0.06] bg-black p-3">
-            <div className="mb-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-              <p className="truncate text-sm font-medium text-white">{user?.username}</p>
-              <p className="truncate text-xs text-white/40">{user?.email}</p>
+          <div className="shrink-0 border-t border-white/[0.06] bg-black p-3.5">
+            <div className="mb-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
+              <p className="truncate text-[0.95rem] font-medium text-white">{user?.username}</p>
+              <p className="truncate text-sm text-white/40">{user?.email}</p>
               {user?.is_admin && (
-                <span className="mt-2 inline-flex rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70">
+                <span className="mt-2 inline-flex rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs uppercase tracking-wider text-white/70">
                   Admin
                 </span>
               )}
@@ -105,9 +105,9 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={() => lock()}
-              className="sidebar-item mb-0.5 w-full text-left"
+              className="sidebar-item mb-1 w-full text-left"
             >
-              <Lock className="h-4 w-4" />
+              <Lock className="h-5 w-5" />
               Lock wallet
             </button>
             <button
@@ -115,13 +115,13 @@ export default function AppLayout() {
               onClick={handleLogout}
               className="sidebar-item w-full text-left text-red-300/80 hover:text-red-200"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" />
               Sign out
             </button>
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+        <div className="flex min-w-0 flex-1 flex-col lg:pl-72">
           <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black/85 backdrop-blur-xl">
             <div className="flex h-14 items-center justify-between gap-3 px-4 lg:px-6">
               {/* Mobile: brand only — no hamburger menu */}
