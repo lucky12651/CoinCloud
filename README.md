@@ -3,6 +3,12 @@
 > **Full documentation:** see the [`docs/`](./docs/) folder  
 > (overview, architecture, database, API, frontend, wallets, setup)
 
+
+https://github.com/user-attachments/assets/749e1a43-841c-4215-ba66-31b4d668e72d
+
+
+
+
 Modern rebuild of the original Flask + HTML wallet:
 
 | Layer | Stack |
