@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Wallet } from 'lucide-react'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store/useAuthStore'
 import { getApiError } from '../lib/errors'
+import BrandLogo from '../components/BrandLogo'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -47,10 +47,8 @@ export default function Register() {
       <div className="pointer-events-none absolute inset-0 grid-fade opacity-60" />
       <div className="relative w-full max-w-md">
         <div className="mb-8 text-center">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-black">
-              <Wallet className="h-4 w-4" />
-            </div>
+          <Link to="/" className="inline-flex items-center gap-2.5">
+            <BrandLogo size={36} rounded="rounded-xl" />
             <span className="font-semibold">CoinCloud</span>
           </Link>
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">Create your wallet</h1>

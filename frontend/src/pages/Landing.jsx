@@ -9,6 +9,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useAuthStore } from '../store/useAuthStore'
+import BrandLogo from '../components/BrandLogo'
 
 const features = [
   {
@@ -47,10 +48,8 @@ export default function Landing() {
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-black/70 backdrop-blur-xl">
         <div className="x-container flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black">
-              <Wallet className="h-4 w-4" />
-            </div>
+          <Link to="/" className="flex items-center gap-2.5">
+            <BrandLogo size={32} rounded="rounded-lg" />
             <span className="text-sm font-semibold tracking-tight">CoinCloud</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
@@ -274,7 +273,7 @@ requests.post(
       <footer className="border-t border-white/[0.06] py-10">
         <div className="x-container flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2 text-sm text-white/40">
-            <Wallet className="h-4 w-4" />
+            <BrandLogo size={20} rounded="rounded-md" />
             CoinCloud
           </div>
           <p className="text-xs text-white/30">

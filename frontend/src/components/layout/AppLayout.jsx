@@ -11,13 +11,13 @@ import {
   LogOut,
   Shield,
   User,
-  Wallet,
   ArrowLeftRight,
   Compass,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useWalletStore } from '../../store/useWalletStore'
 import { cn } from '../../lib/utils'
+import BrandLogo from '../BrandLogo'
 import PriceTicker from '../market/PriceTicker'
 import BottomNav from './BottomNav'
 import LockScreen from './LockScreen'
@@ -68,9 +68,7 @@ export default function AppLayout() {
         {/* Desktop sidebar only — no mobile left menu */}
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-white/[0.06] bg-black/95 backdrop-blur-xl lg:flex">
           <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-black">
-              <Wallet className="h-5 w-5" />
-            </div>
+            <BrandLogo size={36} rounded="rounded-xl" />
             <Link to="/app" className="text-base font-semibold tracking-tight">
               CoinCloud
             </Link>
@@ -126,9 +124,7 @@ export default function AppLayout() {
             <div className="flex h-14 items-center justify-between gap-3 px-4 lg:px-6">
               {/* Mobile: brand only — no hamburger menu */}
               <div className="flex min-w-0 items-center gap-2 lg:hidden">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-black">
-                  <Wallet className="h-3.5 w-3.5" />
-                </div>
+                <BrandLogo size={28} rounded="rounded-lg" />
                 <span className="truncate text-sm font-semibold">CoinCloud</span>
               </div>
 

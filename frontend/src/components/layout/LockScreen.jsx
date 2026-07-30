@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { Lock, Wallet } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { authApi } from '../../services/api'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useWalletStore } from '../../store/useWalletStore'
 import { getApiError } from '../../lib/errors'
+import BrandLogo from '../BrandLogo'
 
 export default function LockScreen() {
   const user = useAuthStore((s) => s.user)
@@ -31,13 +32,14 @@ export default function LockScreen() {
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black px-6">
       <div className="pointer-events-none absolute inset-0 mesh-bg opacity-80" />
       <div className="relative w-full max-w-sm text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-black shadow-glow">
-          <Lock className="h-7 w-7" />
+        <div className="mx-auto mb-5 overflow-hidden rounded-2xl shadow-glow">
+          <BrandLogo size={72} rounded="rounded-2xl" />
         </div>
-        <div className="mb-1 flex items-center justify-center gap-2 text-sm text-white/50">
-          <Wallet className="h-4 w-4" /> CoinCloud
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Wallet locked</h1>
+        <p className="mb-1 text-sm text-white/50">CoinCloud</p>
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-semibold tracking-tight">
+          <Lock className="h-5 w-5 text-white/50" />
+          Wallet locked
+        </h1>
         <p className="mt-2 text-sm text-white/45">
           Enter your password to unlock {user?.username || 'your account'}
         </p>
