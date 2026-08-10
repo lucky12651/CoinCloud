@@ -1,7 +1,12 @@
 import axios from 'axios'
 
+// Paths below already include `/api/...`. If a host sets VITE_API_URL=/api
+// (common PaaS default), strip it so we never call `/api/api/...` (404).
+const rawBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '')
+const baseURL = rawBase === '/api' ? '' : rawBase
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL,
   headers: { 'Content-Type': 'application/json' },
   // Wallet creation (bitcoinlib) can take a while
   timeout: 180_000,
