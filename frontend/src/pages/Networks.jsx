@@ -2,22 +2,15 @@ import { Check } from 'lucide-react'
 import { NETWORKS, useWalletStore } from '../store/useWalletStore'
 import { cn } from '../lib/utils'
 import toast from 'react-hot-toast'
+import BinancePage from '../components/layout/BinancePage'
 
 export default function Networks() {
   const networkId = useWalletStore((s) => s.networkId)
   const setNetwork = useWalletStore((s) => s.setNetwork)
 
   return (
-    <div className="mx-auto max-w-lg animate-fade-in">
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">Networks</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Select network</h1>
-        <p className="mt-2 text-sm text-white/45">
-          Switch the active chain for send, receive, and dApp connections.
-        </p>
-      </div>
-
-      <div className="x-card divide-y divide-white/[0.05] overflow-hidden">
+    <BinancePage crumb="Networks" title="Networks" sub="Active chain for withdraw, deposit, and dApps.">
+      <div className="bn-panel" style={{ padding: 0, overflow: 'hidden' }}>
         {NETWORKS.map((n) => {
           const active = n.id === networkId
           return (
@@ -55,6 +48,6 @@ export default function Networks() {
           )
         })}
       </div>
-    </div>
+    </BinancePage>
   )
 }

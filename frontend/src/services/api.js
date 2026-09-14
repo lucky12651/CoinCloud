@@ -49,6 +49,8 @@ export const walletApi = {
   send: (data) => api.post('/api/wallet/send', data),
   transactions: (coin) => api.get('/api/wallet/transactions', { params: { coin } }),
   sendHistory: () => api.get('/api/wallet/send-history'),
+  gas: () => api.get('/api/wallet/gas'),
+  nfts: () => api.get('/api/wallet/nfts'),
 }
 
 export const adminApi = {

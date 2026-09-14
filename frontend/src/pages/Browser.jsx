@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import BinancePage from '../components/layout/BinancePage'
 
 const EXPLORE = [
   {
@@ -42,19 +43,20 @@ const EXPLORE = [
 
 export default function Browser() {
   return (
-    <div className="mx-auto max-w-2xl animate-fade-in">
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">Discover</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Explore Web3</h1>
-        <p className="mt-2 text-sm text-white/45">
-          Popular dApps and explorers. Connect via the{' '}
-          <Link to="/app/connect" className="text-white underline">
+    <BinancePage
+      crumb="Discover"
+      title="Discover"
+      sub={
+        <>
+          Popular dApps and explorers.{' '}
+          <Link to="/app/connect" className="bn-link">
             Connect
           </Link>{' '}
-          tab.
-        </p>
-      </div>
-
+          before you sign.
+        </>
+      }
+      wide
+    >
       <div className="grid gap-3 sm:grid-cols-2">
         {EXPLORE.map((item) => (
           <a
@@ -74,6 +76,6 @@ export default function Browser() {
           </a>
         ))}
       </div>
-    </div>
+    </BinancePage>
   )
 }

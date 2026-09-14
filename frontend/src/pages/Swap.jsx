@@ -1,98 +1,119 @@
-import { useState } from 'react'
-import { ArrowDown, ArrowLeftRight } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { WALLET_COINS } from '../lib/coins'
+import { marketApi, walletApi } from '../services/api'
+import { formatUsd } from '../lib/utils'
+import BinancePage, { Faq, TransferTabs } from '../components/layout/BinancePage'
 
 export default function Swap() {
   const [from, setFrom] = useState('ETH')
   const [to, setTo] = useState('USDT')
   const [amount, setAmount] = useState('')
+  const [prices, setPrices] = useState([])
+  const [bal, setBal] = useState(0)
+  const slippage = 0.5
 
-  const flip = () => {
-    setFrom(to)
-    setTo(from)
-  }
+  useEffect(() => {
+    marketApi.prices().then((r) => setPrices(r.data || [])).catch(() => {})
+  }, [])
+  useEffect(() => {
+    walletApi.balance(from).then((r) => setBal(r.data?.balance || 0)).catch(() => setBal(0))
+  }, [from])
+
+  const map = useMemo(() => {
+    const m = {}
+    for (const p of prices) m[(p.symbol || '').toUpperCase()] = Number(p.price_usd || 0)
+    return m
+  }, [prices])
+
+  const fromPx = map[from] || 0
+  const toPx = map[to] || 0
+  const pay = Number(amount || 0)
+  const rawOut = fromPx && toPx ? (pay * fromPx) / toPx : 0
+  const out = rawOut * (1 - slippage / 100)
+  const rate = fromPx && toPx ? fromPx / toPx : 0
 
   const onSwap = (e) => {
     e.preventDefault()
-    toast(
-      'Swap is preview-only. Use Send for on-chain transfers. DEX integration coming soon.',
-      { icon: '⇄' }
-    )
+    if (!pay || !out) {
+      toast.error('Enter an amount')
+      return
+    }
+    toast(`Quote: ${pay} ${from} ≈ ${out.toFixed(6)} ${to}. On-chain DEX routing is not enabled yet.`, {
+      icon: '⇄',
+      duration: 5000,
+    })
   }
 
   return (
-    <div className="mx-auto max-w-md animate-fade-in">
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">Exchange</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Swap</h1>
-        <p className="mt-2 text-sm text-white/45">
-          MetaMask-style swap UI. On-chain swaps via DEX will plug in here.
-        </p>
-      </div>
-
-      <form onSubmit={onSwap} className="x-card space-y-2 p-4 sm:p-5">
-        <TokenBox
-          label="You pay"
-          coin={from}
-          setCoin={setFrom}
-          amount={amount}
-          setAmount={setAmount}
-          exclude={to}
+    <BinancePage
+      crumb="Convert"
+      title="Convert"
+      sub="Preview a live USD quote between assets in your wallet."
+      tabs={<TransferTabs />}
+      aside={
+        <Faq
+          items={[
+            { q: 'Is this an on-chain swap?', a: 'This screen shows a live market quote. Broadcasting a DEX swap is not enabled yet — use Withdraw for on-chain sends.' },
+            { q: 'Where does the rate come from?', a: 'CoinGecko USD prices, with 0.5% illustrative slippage.' },
+            { q: 'Can I convert any pair?', a: 'Any two of BTC, LTC, ETH, DOGE, and USDT in this wallet.' },
+          ]}
         />
+      }
+    >
+      <form className="bn-panel" onSubmit={onSwap}>
+        <div className="bn-row">
+          <div className="bn-label">
+            From
+            <button type="button" className="bn-link" onClick={() => setAmount(String(bal || 0))}>
+              Max {bal} {from}
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="bn-input" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+            <select className="bn-input" style={{ maxWidth: 120, fontWeight: 700 }} value={from} onChange={(e) => setFrom(e.target.value)}>
+              {WALLET_COINS.filter((c) => c !== to).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div className="bn-hint" style={{ marginTop: 6 }}>{pay && fromPx ? formatUsd(pay * fromPx) : '—'}</div>
+        </div>
 
-        <div className="flex justify-center -my-1 relative z-10">
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 16px' }}>
           <button
             type="button"
-            onClick={flip}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#111] text-white shadow-lg hover:bg-white/10"
+            className="expand-btn"
+            onClick={() => {
+              setFrom(to)
+              setTo(from)
+            }}
+            aria-label="Flip"
           >
-            <ArrowDown className="h-4 w-4" />
+            <ArrowDown size={16} />
           </button>
         </div>
 
-        <TokenBox label="You receive" coin={to} setCoin={setTo} amount="" readOnly exclude={from} />
-
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px] text-white/40">
-          Estimated rate · network fee · slippage 0.5% (demo)
+        <div className="bn-row">
+          <div className="bn-label">To</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="bn-input" readOnly value={out ? out.toFixed(6) : ''} placeholder="0.00" />
+            <select className="bn-input" style={{ maxWidth: 120, fontWeight: 700 }} value={to} onChange={(e) => setTo(e.target.value)}>
+              {WALLET_COINS.filter((c) => c !== from).map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div className="bn-hint" style={{ marginTop: 6 }}>{out && toPx ? formatUsd(out * toPx) : '—'}</div>
         </div>
 
-        <button type="submit" className="x-btn-primary w-full py-3.5">
-          <ArrowLeftRight className="h-4 w-4" />
-          Review swap
-        </button>
-      </form>
-    </div>
-  )
-}
+        <div className="bn-warn">
+          Rate 1 {from} = {rate ? rate.toFixed(6) : '—'} {to} · Slippage {slippage}%
+        </div>
 
-function TokenBox({ label, coin, setCoin, amount, setAmount, readOnly, exclude }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-4">
-      <div className="mb-2 flex items-center justify-between text-xs text-white/40">
-        <span>{label}</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <input
-          className="min-w-0 flex-1 bg-transparent text-2xl font-semibold outline-none placeholder:text-white/20"
-          placeholder="0"
-          value={amount}
-          onChange={(e) => setAmount?.(e.target.value)}
-          readOnly={readOnly}
-          inputMode="decimal"
-        />
-        <select
-          value={coin}
-          onChange={(e) => setCoin(e.target.value)}
-          className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-medium outline-none"
-        >
-          {WALLET_COINS.filter((c) => c !== exclude).map((c) => (
-            <option key={c} value={c} className="bg-black">
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
+        <button type="submit" className="bn-submit">Preview convert</button>
+      </form>
+    </BinancePage>
   )
 }

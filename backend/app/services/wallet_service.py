@@ -969,3 +969,78 @@ def recovery_bundle(user) -> dict[str, Any]:
             "USDT": "Ethereum ERC-20 transfer via RPC",
         },
     }
+
+
+def get_eth_gas() -> dict[str, Any]:
+    """Live Ethereum gas. Tries the configured RPC, then public fallbacks."""
+    rpcs = [
+        settings.ETH_RPC_URL,
+        "https://ethereum.publicnode.com",
+        "https://cloudflare-eth.com",
+        "https://1rpc.io/eth",
+    ]
+    last_err = "no rpc"
+    for url in rpcs:
+        if not url:
+            continue
+        try:
+            from web3 import Web3
+
+            w3 = Web3(Web3.HTTPProvider(url, request_kwargs={"timeout": 12}))
+            wei = int(w3.eth.gas_price)
+            gwei = wei / 1e9
+            return {
+                "ok": True,
+                "gwei": round(gwei, 2),
+                "slow_gwei": round(max(gwei * 0.85, 0.01), 2),
+                "fast_gwei": round(gwei * 1.2, 2),
+                "transfer_eth": (wei * 21000) / 1e18,
+                "transfer_gas_limit": 21000,
+                "source": url,
+            }
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return {"ok": False, "error": last_err, "gwei": 0, "slow_gwei": 0, "fast_gwei": 0}
+
+
+def get_nfts(address: str) -> list[dict[str, Any]]:
+    """ERC-721 / ERC-1155 owned by the ETH address (Blockscout public index)."""
+    if not address:
+        return []
+    try:
+        resp = requests.get(
+            f"https://eth.blockscout.com/api/v2/addresses/{address}/nft",
+            params={"type": "ERC-721,ERC-1155"},
+            timeout=20,
+            headers={"accept": "application/json"},
+        )
+        resp.raise_for_status()
+        data = resp.json() or {}
+        items = data.get("items") or []
+        out: list[dict[str, Any]] = []
+        for it in items[:48]:
+            token = it.get("token") or {}
+            meta = it.get("metadata") if isinstance(it.get("metadata"), dict) else {}
+            image = (
+                it.get("image_url")
+                or meta.get("image")
+                or meta.get("image_url")
+                or token.get("icon_url")
+            )
+            if isinstance(image, str) and image.startswith("ipfs://"):
+                image = "https://ipfs.io/ipfs/" + image[7:]
+            out.append(
+                {
+                    "id": str(it.get("id") or it.get("token_id") or ""),
+                    "token_id": str(it.get("id") or it.get("token_id") or ""),
+                    "name": meta.get("name") or token.get("name") or "NFT",
+                    "collection": token.get("name") or token.get("symbol") or "Collection",
+                    "image": image,
+                    "contract": token.get("address") or token.get("address_hash"),
+                    "type": it.get("token_type") or token.get("type") or "ERC-721",
+                }
+            )
+        return out
+    except Exception:
+        return []

@@ -24,7 +24,14 @@ export const useWalletStore = create((set, get) => ({
   hideBalances: loadJson('cc_hide_balances', false),
   connectedSites: loadJson('cc_connected_sites', []),
   pendingConnect: null, // { origin, name, icon, permissions }
-  favoriteTokens: loadJson('cc_fav_tokens', ['BTC', 'ETH', 'USDT', 'LTC', 'DOGE']),
+  favoriteTokens: loadJson('cc_fav_tokens', ['BTC', 'ETH', 'SOL']),
+  contacts: loadJson('cc_contacts', []),
+  alerts: loadJson('cc_alerts', []),
+  notifications: loadJson('cc_notifs', []),
+  autoLockMinutes: loadJson('cc_autolock', 15),
+  lastActive: Date.now(),
+  backupOk: loadJson('cc_backup_ok', false),
+  theme: loadJson('cc_theme', 'dark'),
 
   setNetwork: (networkId) => {
     localStorage.setItem('cc_network', JSON.stringify(networkId))
@@ -71,5 +78,100 @@ export const useWalletStore = create((set, get) => ({
       : [...fav, symbol]
     localStorage.setItem('cc_fav_tokens', JSON.stringify(next))
     set({ favoriteTokens: next })
+  },
+
+  setTheme: (theme) => {
+    localStorage.setItem('cc_theme', JSON.stringify(theme))
+    set({ theme })
+  },
+
+  toggleTheme: () => {
+    const next = get().theme === 'light' ? 'dark' : 'light'
+    localStorage.setItem('cc_theme', JSON.stringify(next))
+    set({ theme: next })
+  },
+
+  touch: () => set({ lastActive: Date.now() }),
+
+  setAutoLockMinutes: (mins) => {
+    localStorage.setItem('cc_autolock', JSON.stringify(mins))
+    set({ autoLockMinutes: mins, lastActive: Date.now() })
+  },
+
+  markBackupOk: () => {
+    localStorage.setItem('cc_backup_ok', JSON.stringify(true))
+    set({ backupOk: true })
+  },
+
+  addContact: (contact) => {
+    const item = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: contact.name.trim(),
+      address: contact.address.trim(),
+      coin: (contact.coin || 'ETH').toUpperCase(),
+      createdAt: new Date().toISOString(),
+    }
+    const next = [item, ...get().contacts]
+    localStorage.setItem('cc_contacts', JSON.stringify(next))
+    set({ contacts: next })
+    return item
+  },
+
+  removeContact: (id) => {
+    const next = get().contacts.filter((c) => c.id !== id)
+    localStorage.setItem('cc_contacts', JSON.stringify(next))
+    set({ contacts: next })
+  },
+
+  addAlert: (alert) => {
+    const item = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      symbol: (alert.symbol || 'BTC').toUpperCase(),
+      dir: alert.dir === 'below' ? 'below' : 'above',
+      target: Number(alert.target),
+      triggered: false,
+      createdAt: new Date().toISOString(),
+    }
+    const next = [item, ...get().alerts]
+    localStorage.setItem('cc_alerts', JSON.stringify(next))
+    set({ alerts: next })
+    return item
+  },
+
+  removeAlert: (id) => {
+    const next = get().alerts.filter((a) => a.id !== id)
+    localStorage.setItem('cc_alerts', JSON.stringify(next))
+    set({ alerts: next })
+  },
+
+  markAlertTriggered: (id) => {
+    const next = get().alerts.map((a) => (a.id === id ? { ...a, triggered: true } : a))
+    localStorage.setItem('cc_alerts', JSON.stringify(next))
+    set({ alerts: next })
+  },
+
+  pushNotification: (n) => {
+    const item = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: n.title,
+      body: n.body || '',
+      to: n.to || '/app',
+      at: new Date().toISOString(),
+      read: false,
+    }
+    const next = [item, ...get().notifications].slice(0, 40)
+    localStorage.setItem('cc_notifs', JSON.stringify(next))
+    set({ notifications: next })
+  },
+
+  markNotificationsRead: () => {
+    const next = get().notifications.map((n) => ({ ...n, read: true }))
+    localStorage.setItem('cc_notifs', JSON.stringify(next))
+    set({ notifications: next })
+  },
+
+  clearNotifications: () => {
+    localStorage.setItem('cc_notifs', JSON.stringify([]))
+    set({ notifications: [] })
   },
 }))

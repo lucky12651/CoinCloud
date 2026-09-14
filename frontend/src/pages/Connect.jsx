@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useAuthStore } from '../store/useAuthStore'
 import { useWalletStore } from '../store/useWalletStore'
 import { shortAddress } from '../lib/utils'
+import BinancePage from '../components/layout/BinancePage'
 
 const DEMO_DAPPS = [
   {
@@ -96,14 +97,7 @@ export default function Connect() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl animate-fade-in">
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">dApps</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Connect wallet</h1>
-        <p className="mt-2 text-sm text-white/45">
-          Connect to sites like MetaMask / WalletConnect. Sessions stay on this device.
-        </p>
-      </div>
+    <BinancePage crumb="Connect" title="Connect" sub="Link dApps. Sessions stay on this device.">
 
       {/* WalletConnect-style card */}
       <div className="x-card mb-4 p-5">
@@ -279,6 +273,6 @@ export default function Connect() {
           </div>
         </div>
       )}
-    </div>
+    </BinancePage>
   )
 }

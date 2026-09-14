@@ -114,3 +114,17 @@ def send_history(user: User = Depends(get_current_user), db: Session = Depends(g
         }
         for r in rows
     ]
+
+
+@router.get("/gas")
+def gas():
+    """Live ETH gas (gwei) from the wallet RPC."""
+    return wallet_service.get_eth_gas()
+
+
+@router.get("/nfts")
+def nfts(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Collectibles on the user's Ethereum address."""
+    wallet_service.ensure_addresses_backfill(user, db)
+    addr = user.wallet_address_eth
+    return {"address": addr, "items": wallet_service.get_nfts(addr or "")}

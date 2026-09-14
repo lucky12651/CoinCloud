@@ -1,7 +1,12 @@
+import time
+
 import requests
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/market", tags=["market"])
+
+_PRICE_CACHE = {"at": 0.0, "data": None}
+_PRICE_TTL = 25.0
 
 # Broad market set for ticker + portfolio prices
 COINGECKO_IDS = (
@@ -48,13 +53,17 @@ SYMBOL_OVERRIDE = {
 
 @router.get("/prices")
 def prices():
+    now = time.time()
+    cached = _PRICE_CACHE.get("data")
+    if cached and now - _PRICE_CACHE["at"] < _PRICE_TTL:
+        return cached
     try:
         url = (
             "https://api.coingecko.com/api/v3/coins/markets"
             f"?vs_currency=usd&ids={COINGECKO_IDS}&order=market_cap_desc"
             "&per_page=50&sparkline=false&price_change_percentage=24h"
         )
-        resp = requests.get(url, timeout=20)
+        resp = requests.get(url, timeout=8)
         resp.raise_for_status()
         data = resp.json()
         out = []
@@ -72,8 +81,13 @@ def prices():
                     "volume_24h": item.get("total_volume"),
                 }
             )
+        if out:
+            _PRICE_CACHE["data"] = out
+            _PRICE_CACHE["at"] = now
         return out
     except Exception as e:
+        if cached:
+            return cached
         return [
             {
                 "id": "bitcoin",

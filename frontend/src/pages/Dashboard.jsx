@@ -1,71 +1,101 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  ChevronRight,
-  Copy,
-  Eye,
-  EyeOff,
-  Link2,
-  QrCode,
-  RefreshCw,
-  Scan,
-  TrendingDown,
-  TrendingUp,
-} from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Link, useOutletContext } from 'react-router-dom'
+import { EyeOff } from 'lucide-react'
 import { marketApi, walletApi } from '../services/api'
-import {
-  cn,
-  coinMeta,
-  copyText,
-  formatBalance,
-  formatDate,
-  formatUsd,
-  shortAddress,
-} from '../lib/utils'
+import { formatUsd, formatBalance, formatDate, coinMeta, shortAddress } from '../lib/utils'
 import { WALLET_COINS } from '../lib/coins'
-import { useAuthStore } from '../store/useAuthStore'
-import { useWalletStore } from '../store/useWalletStore'
+import { NETWORKS, useWalletStore } from '../store/useWalletStore'
+import { readPriceCache, writePriceCache } from '../lib/priceCache'
 import TradingViewChart from '../components/market/TradingViewChart'
-import TradingViewNews from '../components/market/TradingViewNews'
+import CoinIcon from '../components/vortex/CoinIcon'
+import Change from '../components/vortex/Change'
+import Sparkline, { synthSpark } from '../components/vortex/Sparkline'
+
+const INTERVALS = [
+  { label: '15m', value: '15' },
+  { label: '1H', value: '60' },
+  { label: '4H', value: '240' },
+  { label: '1D', value: 'D' },
+]
+
+function timeAgo(ts) {
+  if (!ts) return 'just now'
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000))
+  if (s < 60) return `${s} seconds ago`
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`
+  const h = Math.round(m / 60)
+  return `${h} hour${h === 1 ? '' : 's'} ago`
+}
 
 export default function Dashboard() {
-  const user = useAuthStore((s) => s.user)
   const hideBalances = useWalletStore((s) => s.hideBalances)
   const toggleHideBalances = useWalletStore((s) => s.toggleHideBalances)
   const network = useWalletStore((s) => s.getNetwork())
+  const setNetwork = useWalletStore((s) => s.setNetwork)
+  const { searchQuery = '', prices: ctxPrices } = useOutletContext() || {}
 
   const [balances, setBalances] = useState({})
-  const [addresses, setAddresses] = useState({})
-  const [prices, setPrices] = useState([])
-  const [txs, setTxs] = useState([])
+  const [prices, setPrices] = useState(() =>
+    Array.isArray(ctxPrices) && ctxPrices.length ? ctxPrices : readPriceCache()
+  )
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [updatedAt, setUpdatedAt] = useState(Date.now())
+  const [netOpen, setNetOpen] = useState(false)
+  const [chartSymbol, setChartSymbol] = useState('BTC')
+  const [interval, setIntervalId] = useState('60')
+  const [intervalOpen, setIntervalOpen] = useState(false)
+  const [txs, setTxs] = useState([])
+  const [picked, setPicked] = useState(null)
+  const [, setNow] = useState(Date.now())
 
-  const load = async (soft = false) => {
-    if (soft) setRefreshing(true)
-    else setLoading(true)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 15_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const loadPrices = () => {
+    marketApi
+      .prices()
+      .then((r) => {
+        const list = Array.isArray(r.data) ? r.data : []
+        if (!list.length) return
+        writePriceCache(list)
+        setPrices(list)
+        setUpdatedAt(Date.now())
+      })
+      .catch(() => {})
+  }
+
+  const loadWallet = async () => {
+    setLoading(true)
     try {
-      const [bRes, pRes, aRes, tRes] = await Promise.all([
+      const [bRes, tRes] = await Promise.all([
         walletApi.balances(),
-        marketApi.prices().catch(() => ({ data: [] })),
-        walletApi.addresses().catch(() => ({ data: {} })),
         walletApi.transactions(network.symbol === 'USDT' ? 'ETH' : network.symbol).catch(() => ({ data: [] })),
       ])
       setBalances(bRes.data || {})
-      setPrices(pRes.data || [])
-      setAddresses(aRes.data || {})
-      setTxs(Array.isArray(tRes.data) ? tRes.data.slice(0, 5) : [])
+      setTxs(Array.isArray(tRes.data) ? tRes.data.slice(0, 6) : [])
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    load()
+    if (Array.isArray(ctxPrices) && ctxPrices.length) {
+      setPrices(ctxPrices)
+      writePriceCache(ctxPrices)
+    }
+  }, [ctxPrices])
+
+  useEffect(() => {
+    loadPrices()
+    loadWallet()
+    const id = setInterval(() => {
+      loadPrices()
+      loadWallet()
+    }, 60_000)
+    return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [network.id])
 
@@ -75,362 +105,550 @@ export default function Dashboard() {
     return m
   }, [prices])
 
-  const totalUsd = useMemo(() => {
-    return WALLET_COINS.reduce((sum, c) => {
+  const tokens = useMemo(() => {
+    return WALLET_COINS.map((c) => {
       const bal = Number(balances[c]?.balance || 0)
-      const px = Number(priceMap[c]?.price_usd || 0)
-      return sum + bal * px
-    }, 0)
+      const px = priceMap[c]
+      const usd = bal * Number(px?.price_usd || 0)
+      const change = Number(px?.change_24h || 0)
+      const spark = Array.isArray(px?.sparkline) && px.sparkline.length
+        ? px.sparkline
+        : synthSpark(c, change)
+      return {
+        symbol: c,
+        name: coinMeta(c).name,
+        balance: bal,
+        usd,
+        change,
+        change30: Number(px?.change_30d ?? px?.change_24h ?? 0),
+        price: Number(px?.price_usd || 0),
+        spark,
+      }
+    })
   }, [balances, priceMap])
 
-  const primaryAddress =
-    addresses[network.symbol] ||
-    addresses.ETH ||
-    addresses.BTC ||
-    ''
+  const totalUsd = useMemo(() => tokens.reduce((s, t) => s + t.usd, 0), [tokens])
+
+  const pnl24 = useMemo(() => {
+    return tokens.reduce((s, t) => {
+      const ch = t.change / 100
+      if (!Number.isFinite(ch) || !t.usd) return s
+      return s + t.usd * (ch / (1 + ch))
+    }, 0)
+  }, [tokens])
+
+  const avgGrow = useMemo(() => {
+    if (!totalUsd) return 0
+    return tokens.reduce((s, t) => s + (t.usd / totalUsd) * t.change, 0)
+  }, [tokens, totalUsd])
+
+  const best = useMemo(() => {
+    const held = tokens.filter((t) => t.usd > 0)
+    const pool = held.length ? held : tokens
+    return [...pool].sort((a, b) => b.change - a.change)[0]
+  }, [tokens])
+
+  const pnl30pct = useMemo(() => {
+    if (!totalUsd) return 0
+    return tokens.reduce((s, t) => s + (t.usd / totalUsd) * t.change30, 0)
+  }, [tokens, totalUsd])
+
+  const q = searchQuery.trim().toLowerCase()
+  const liveCards = useMemo(() => {
+    const preferred = ['BTC', 'ETH', 'BNB']
+    const extras = prices.filter((p) => !preferred.includes((p.symbol || '').toUpperCase()))
+    const ordered = [
+      ...preferred.map((s) => priceMap[s]).filter(Boolean),
+      ...extras,
+    ]
+    const list = ordered.filter((p) => {
+      if (!q) return true
+      return (
+        (p.symbol || '').toLowerCase().includes(q) ||
+        (p.name || '').toLowerCase().includes(q)
+      )
+    })
+    return list.slice(0, 3)
+  }, [priceMap, prices, q])
+
+  const holdings = useMemo(() => {
+    return tokens
+      .filter((t) => (q ? t.name.toLowerCase().includes(q) || t.symbol.toLowerCase().includes(q) : true))
+      .sort((a, b) => b.usd - a.usd)
+  }, [tokens, q])
 
   const mask = (v) => (hideBalances ? '••••••' : v)
 
-  const onCopy = async () => {
-    if (!primaryAddress) return
-    try {
-      await copyText(primaryAddress)
-      toast.success('Address copied')
-    } catch {
-      toast.error('Copy failed')
-    }
-  }
+  const intervalLabel = INTERVALS.find((i) => i.value === interval)?.label || '1H'
+  const highToken = [...tokens].sort((a, b) => b.price - a.price)[0]
+  const today = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
-  const tokens = WALLET_COINS.map((c) => {
-    const bal = Number(balances[c]?.balance || 0)
-    const px = priceMap[c]
-    const usd = bal * Number(px?.price_usd || 0)
-    return {
-      symbol: c,
-      ...coinMeta(c),
-      balance: bal,
-      usd,
-      change: px?.change_24h,
-      price: px?.price_usd,
-      image: px?.image,
-    }
-  }).sort((a, b) => b.usd - a.usd)
+  const alloc = holdings.filter((t) => t.usd > 0)
+  const COLORS = ['#d7f24c', '#627eea', '#f7931a', '#3ddc84', '#f0b90b']
 
   return (
-    <div className="mx-auto max-w-7xl animate-fade-in">
-      <div>
-        {/* ═══ MOBILE ═══ */}
-        <div className="lg:hidden">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-black ring-2 ring-emerald-400/40 shadow-[0_0_20px_rgba(34,197,94,0.35)]"
-                style={{
-                  background: `linear-gradient(135deg, ${network.color}, #86efac)`,
-                }}
-              >
-                {(user?.username || 'U')[0].toUpperCase()}
+    <>
+      <div className="vx-content">
+        <section className="vx-card balance-card">
+          <div className="card-head">
+            <div className="card-head-left">
+              <div className="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="6" width="20" height="14" rx="2" />
+                  <path d="M2 10h20" />
+                </svg>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-emerald-50">{user?.username}</p>
-                <button
-                  type="button"
-                  onClick={onCopy}
-                  className="flex items-center gap-1 font-mono text-[11px] text-emerald-200/50 hover:text-emerald-100"
-                >
-                  {shortAddress(primaryAddress, 6, 4)}
-                  <Copy className="h-3 w-3" />
-                </button>
-              </div>
+              <span className="card-title">My Balance</span>
             </div>
-            <button
-              type="button"
-              onClick={toggleHideBalances}
-              className="glass-btn p-2.5"
-            >
-              {hideBalances ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <button type="button" className="expand-btn" onClick={toggleHideBalances} aria-label="Toggle balances">
+              {hideBalances ? <EyeOff /> : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M7 17L17 7M7 7h10v10" />
+                </svg>
+              )}
             </button>
           </div>
 
-          {/* Balance hero — open on neon bg (no glass box) */}
-          <div className="mb-6 px-2 py-4 text-center">
-            <p className="text-xs uppercase tracking-[0.2em] dash-muted">Total balance</p>
-            <p className="dash-title-glow mt-2 text-4xl font-semibold tracking-tight text-emerald-50">
-              {loading ? '—' : mask(formatUsd(totalUsd))}
-            </p>
-            <p className="mt-1 text-xs text-emerald-300/50">{network.name} network</p>
-          </div>
-
-          <div className="mb-6 grid grid-cols-4 gap-2">
-            {[
-              { to: '/app/send', label: 'Send', icon: ArrowUpRight },
-              { to: '/app/receive', label: 'Receive', icon: ArrowDownLeft },
-              { to: '/app/connect', label: 'Connect', icon: Link2 },
-              { to: '/app/receive', label: 'Scan', icon: Scan },
-            ].map(({ to, label, icon: Icon }) => (
-              <Link
-                key={label}
-                to={to}
-                className="glass-card flex flex-col items-center gap-2 px-2 py-3 transition active:scale-95 hover:border-emerald-400/30"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-black shadow-[0_0_16px_rgba(34,197,94,0.45)]">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="text-[11px] font-medium text-emerald-100/80">{label}</span>
-              </Link>
-            ))}
-          </div>
-
-          <div className="glass-card overflow-hidden">
-            <div className="flex items-center justify-between border-b dash-divider px-4 py-3">
-              <h2 className="text-sm font-medium text-emerald-50">Tokens</h2>
-              <button
-                type="button"
-                onClick={() => load(true)}
-                className="text-emerald-300/50 hover:text-emerald-200"
-              >
-                <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-              </button>
-            </div>
-            <div className="divide-y divide-emerald-500/10">
-              {tokens.map((t) => (
-                <Link
-                  key={t.symbol}
-                  to="/app/send"
-                  className="flex items-center gap-3 px-4 py-3.5 active:bg-emerald-500/5"
-                >
-                  {t.image ? (
-                    <img src={t.image} alt="" className="h-10 w-10 rounded-full ring-1 ring-emerald-400/20" />
-                  ) : (
-                    <span
-                      className={cn(
-                        'flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-xs font-bold ring-1 ring-emerald-400/20',
-                        t.color
-                      )}
+          <div className="balance-row">
+            <div className="balance-amount">{loading ? '—' : mask(formatUsd(totalUsd))}</div>
+            <button type="button" className="coin-chip" onClick={() => setNetOpen((v) => !v)}>
+              {network.symbol}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+              {netOpen && (
+                <div className="coin-chip-menu" onClick={(e) => e.stopPropagation()}>
+                  {NETWORKS.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      className={n.symbol === network.symbol ? 'active' : ''}
+                      onClick={() => {
+                        setNetwork(n.id)
+                        setNetOpen(false)
+                        setChartSymbol(n.symbol === 'USDT' ? 'ETH' : n.symbol)
+                      }}
                     >
-                      {t.symbol[0]}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-emerald-50">{t.name}</p>
-                      <p className="font-mono text-sm text-emerald-50/90">
-                        {mask(formatUsd(t.usd))}
-                      </p>
+                      <CoinIcon symbol={n.symbol} />
+                      {n.symbol}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </button>
+          </div>
+
+          <div className="balance-stats">
+            <div>
+              <div className="stat-label">Total Profit</div>
+              <div className={`stat-value ${pnl24 >= 0 ? 'green' : 'red'}`}>
+                {hideBalances ? '••••' : `${pnl24 >= 0 ? '+' : ''}${formatUsd(pnl24)}`}
+              </div>
+            </div>
+            <div>
+              <div className="stat-label">Avg. Growing</div>
+              <div className={`stat-value ${avgGrow >= 0 ? 'green' : 'red'}`}>
+                {hideBalances ? '••••' : `${avgGrow >= 0 ? '+' : ''}${avgGrow.toFixed(2)}%`}
+              </div>
+            </div>
+            <div>
+              <div className="stat-label">Best Performer</div>
+              <div className="stat-value">
+                {best ? `${best.name} (${best.symbol})` : '—'}
+              </div>
+            </div>
+          </div>
+
+          <div className="balance-actions">
+            <Link to="/app/receive" className="vx-btn btn-accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Top Up
+            </Link>
+            <Link to="/app/send" className="vx-btn btn-ghost">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 19V5M5 12l7 7 7-7" />
+              </svg>
+              Withdraw
+            </Link>
+          </div>
+        </section>
+
+        <section className="crypto-section">
+          <div className="crypto-header">
+            <div>
+              <div className="crypto-title">Live Crypto Updates</div>
+              <div className="crypto-updated">
+                <span className="live-dot" />
+                Last Update: {timeAgo(updatedAt)}
+              </div>
+            </div>
+            <div className="crypto-header-spacer" />
+            <div className="chip-row">
+              <div className="chip">
+                USD
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+              <div className="chip">
+                {network.name}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+              <div className="chip">
+                1D
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+            </div>
+            <Link to="/app/market" className="see-all" style={{ marginLeft: 10 }}>
+              See All
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
+
+          <div className="crypto-cards">
+            {liveCards.map((c) => {
+              const pos = Number(c.change_24h) >= 0
+              const spark = Array.isArray(c.sparkline) && c.sparkline.length
+                ? c.sparkline
+                : synthSpark(c.symbol, c.change_24h)
+              return (
+                <button
+                  type="button"
+                  key={c.symbol}
+                  className="ccard"
+                  onClick={() => setChartSymbol((c.symbol || 'BTC').toUpperCase())}
+                >
+                  <div className="ccard-head">
+                    <CoinIcon symbol={c.symbol} />
+                    <div>
+                      <div className="ccard-pair">{c.symbol}/USD</div>
+                      <div className="ccard-name">{c.name}</div>
                     </div>
-                    <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-emerald-200/40">
-                      <span className="font-mono">
-                        {mask(formatBalance(t.balance, t.symbol === 'USDT' ? 2 : 6))} {t.symbol}
-                      </span>
-                      {t.change != null && (
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-0.5',
-                            t.change >= 0 ? 'text-emerald-400' : 'text-red-400'
-                          )}
-                        >
-                          {t.change >= 0 ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3" />
-                          )}
-                          {Number(t.change).toFixed(1)}%
-                        </span>
-                      )}
+                    <div className="ccard-more">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <circle cx="12" cy="5" r="1" />
+                        <circle cx="12" cy="12" r="1" />
+                        <circle cx="12" cy="19" r="1" />
+                      </svg>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-emerald-500/30" />
-                </Link>
+                  <div className="ccard-price-label">Price</div>
+                  <div className="ccard-bottom">
+                    <div>
+                      <div className="ccard-price">{formatUsd(c.price_usd)}</div>
+                      <Change value={c.change_24h} className="ccard-change" />
+                    </div>
+                    <Sparkline points={spark} pos={pos} />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="vx-card chart-card">
+          <div className="chart-toolbar">
+            <div className="chart-pair">
+              <CoinIcon symbol={chartSymbol} />
+              <div>
+                <div className="chart-pair-name">
+                  {chartSymbol} / USD
+                  <button
+                    type="button"
+                    className="add-btn"
+                    onClick={() => {
+                      const order = ['BTC', 'ETH', 'LTC', 'DOGE', 'USDT']
+                      const i = order.indexOf(chartSymbol)
+                      setChartSymbol(order[(i + 1) % order.length])
+                    }}
+                    aria-label="Next pair"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="chart-pair-sub">Live market</div>
+              </div>
+            </div>
+            <div className="tb-divider" />
+            <div className="tb-item select" style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setIntervalOpen((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {intervalLabel}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              {intervalOpen && (
+                <div className="coin-chip-menu" style={{ left: 0, right: 'auto' }}>
+                  {INTERVALS.map((i) => (
+                    <button
+                      key={i.value}
+                      type="button"
+                      className={i.value === interval ? 'active' : ''}
+                      onClick={() => {
+                        setIntervalId(i.value)
+                        setIntervalOpen(false)
+                      }}
+                    >
+                      {i.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="tb-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M4 6h16M4 12h10M4 18h6" strokeLinecap="round" />
+                <circle cx="17" cy="12" r="1.6" />
+                <circle cx="13" cy="18" r="1.6" />
+              </svg>
+            </div>
+            <div className="tb-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="10" width="4" height="8" />
+                <rect x="10" y="5" width="4" height="13" />
+                <rect x="17" y="13" width="4" height="5" />
+              </svg>
+              Indicator
+            </div>
+            <div className="tb-spacer" />
+          </div>
+
+          <div className="chart-body">
+            <div className="chart-tools">
+              <div className="tool-btn active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              </div>
+              <div className="tool-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M4 20L20 4" />
+                </svg>
+              </div>
+              <div className="tool-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M4 8h16M4 16h16" />
+                </svg>
+              </div>
+              <div className="tool-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 17c3-6 6 6 9-6s6 6 9-6" />
+                </svg>
+              </div>
+              <div className="tool-sep" />
+              <div className="tool-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="chart-canvas-wrap">
+              <TradingViewChart fill mode="advanced" symbol={chartSymbol} interval={interval} />
+            </div>
+          </div>
+        </section>
+
+        <aside className="portfolio-card">
+          <div className="vx-card portfolio-top">
+            <div className="card-head">
+              <div className="card-head-left">
+                <div className="card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3v18h18" />
+                    <path d="M7 15l4-5 3 3 5-7" />
+                  </svg>
+                </div>
+                <span className="card-title">My Portfolio</span>
+              </div>
+              <Link to="/app/activity" className="expand-btn" aria-label="Open activity">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M7 17L17 7M7 7h10v10" />
+                </svg>
+              </Link>
+            </div>
+
+            <div className="portfolio-perf">
+              <div className={`perf-badge ${pnl30pct >= 0 ? '' : 'neg'}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={pnl30pct >= 0 ? 'M4 15l6-6 4 4 6-8' : 'M4 9l6 6 4-4 6 8'} />
+                </svg>
+                {Math.abs(pnl30pct).toFixed(2)}%
+              </div>
+              <div className="perf-label">Profit in last 24 hours</div>
+            </div>
+
+            {alloc.length > 0 && (
+              <div className="alloc-wrap">
+                <svg width="72" height="72" viewBox="0 0 36 36">
+                  {(() => {
+                    let off = 0
+                    const sum = alloc.reduce((s, t) => s + t.usd, 0) || 1
+                    return alloc.map((t, i) => {
+                      const pct = (t.usd / sum) * 100
+                      const dash = `${pct} ${100 - pct}`
+                      const el = (
+                        <circle
+                          key={t.symbol}
+                          cx="18"
+                          cy="18"
+                          r="15.9"
+                          fill="none"
+                          stroke={COLORS[i % COLORS.length]}
+                          strokeWidth="4"
+                          strokeDasharray={dash}
+                          strokeDashoffset={-off}
+                          transform="rotate(-90 18 18)"
+                        />
+                      )
+                      off += pct
+                      return el
+                    })
+                  })()}
+                </svg>
+                <div className="alloc-legend">
+                  {alloc.map((t, i) => (
+                    <div key={t.symbol} className="alloc-leg">
+                      <span className="alloc-sw" style={{ background: COLORS[i % COLORS.length] }} />
+                      {t.symbol} {totalUsd ? ((t.usd / totalUsd) * 100).toFixed(0) : 0}%
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="holdings">
+              {holdings.map((t) => (
+                <button type="button" key={t.symbol} className="wl-item" onClick={() => setPicked(t)} style={{ width: '100%' }}>
+                  <CoinIcon symbol={t.symbol} />
+                  <div className="wl-info">
+                    <div className="wl-name">
+                      {t.name} ({t.symbol})
+                    </div>
+                    <div className="wl-price">
+                      {hideBalances ? '••••' : formatUsd(t.usd)} · {hideBalances ? '••••' : t.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                    </div>
+                  </div>
+                  <Change value={t.change} />
+                </button>
               ))}
             </div>
-          </div>
 
-          <div className="glass-card mt-4 overflow-hidden">
-            <div className="flex items-center justify-between border-b dash-divider px-4 py-3">
-              <h2 className="text-sm font-medium text-emerald-50">Recent activity</h2>
-              <Link to="/app/activity" className="text-xs text-emerald-300/50 hover:text-emerald-200">
-                See all
-              </Link>
-            </div>
-            {txs.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-emerald-200/35">No activity yet</p>
-            ) : (
-              <div className="divide-y divide-emerald-500/10">
-                {txs.map((tx) => {
+            {txs.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div className="card-title" style={{ marginBottom: 8 }}>Recent activity</div>
+                {txs.slice(0, 4).map((tx) => {
                   const recv = (tx.transaction_type || '').toLowerCase() === 'received'
                   return (
-                    <div key={tx.txid + tx.date} className="flex items-center gap-3 px-4 py-3">
-                      <span
-                        className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-full border',
-                          recv
-                            ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300'
-                            : 'border-emerald-500/15 bg-black/30 text-emerald-100/70'
-                        )}
-                      >
-                        {recv ? (
-                          <ArrowDownLeft className="h-4 w-4" />
-                        ) : (
-                          <ArrowUpRight className="h-4 w-4" />
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-emerald-50">{tx.transaction_type}</p>
-                        <p className="text-[11px] text-emerald-200/35">{formatDate(tx.date)}</p>
+                    <div key={tx.txid + tx.date} className="wl-item">
+                      <div className="wl-info">
+                        <div className="wl-name">{recv ? 'Received' : 'Sent'}</div>
+                        <div className="wl-price">{formatDate(tx.date)} · {shortAddress(tx.txid, 6, 4)}</div>
                       </div>
-                      <p className={cn('font-mono text-sm', recv ? 'text-emerald-300' : 'text-emerald-50/80')}>
-                        {recv ? '+' : '−'}
-                        {mask(formatBalance(tx.amount, 4))}
-                      </p>
+                      <div className={`wl-change ${recv ? 'pos' : 'neg'}`}>
+                        {recv ? '+' : '−'}{formatBalance(tx.amount, 4)}
+                      </div>
                     </div>
                   )
                 })}
               </div>
             )}
           </div>
-        </div>
 
-        {/* ═══ DESKTOP ═══ */}
-        <div className="hidden space-y-6 lg:block">
-          {/* Portfolio hero — open on neon bg (no glass rectangle) */}
-          <div className="flex flex-wrap items-end justify-between gap-4 px-1">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] dash-muted">Portfolio</p>
-              <h1 className="dash-title-glow mt-1 text-4xl font-semibold tracking-tight text-emerald-50">
-                {loading ? '—' : formatUsd(totalUsd)}
-              </h1>
-              <button
-                type="button"
-                onClick={onCopy}
-                className="mt-2 inline-flex items-center gap-1.5 font-mono text-xs text-emerald-200/50 hover:text-emerald-100"
-              >
-                <QrCode className="h-3.5 w-3.5" />
-                {shortAddress(primaryAddress, 10, 8)}
-                <Copy className="h-3 w-3" />
-              </button>
+          <div className="yearly-card">
+            <div className="yearly-head">
+              <span className="yearly-title">24h Performance</span>
+              <span className="yearly-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 8v4l3 2" />
+                </svg>
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => load(true)}
-                className="glass-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"
-                disabled={refreshing}
-              >
-                <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-                Refresh
-              </button>
-              <Link to="/app/send" className="glass-btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm">
-                <ArrowUpRight className="h-4 w-4" /> Send
-              </Link>
-              <Link to="/app/receive" className="glass-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm">
-                <ArrowDownLeft className="h-4 w-4" /> Receive
-              </Link>
-              <Link to="/app/connect" className="glass-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm">
-                <Link2 className="h-4 w-4" /> Connect
-              </Link>
+            <div className="yearly-pill">
+              <span className="dot" />
+              {pnl24 >= 0 ? 'High' : 'Low'} • {today}
             </div>
+            <div className="yearly-value">{hideBalances ? '••••' : formatUsd(Math.abs(pnl24) || highToken?.price || 0)}</div>
+            <svg className="yearly-chart" viewBox="0 0 260 46" preserveAspectRatio="none">
+              <polyline
+                points="0,36 20,30 40,33 60,22 80,26 100,14 120,20 140,10 160,16 180,6 200,12 220,4 240,9 260,2"
+                fill="none"
+                stroke={pnl24 >= 0 ? '#3ddc84' : '#f36969'}
+                strokeWidth="2"
+              />
+              <polygon
+                points="0,36 20,30 40,33 60,22 80,26 100,14 120,20 140,10 160,16 180,6 200,12 220,4 240,9 260,2 260,46 0,46"
+                fill={pnl24 >= 0 ? 'url(#yg)' : 'url(#yr)'}
+                opacity="0.25"
+              />
+              <defs>
+                <linearGradient id="yg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3ddc84" />
+                  <stop offset="100%" stopColor="#3ddc84" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="yr" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f36969" />
+                  <stop offset="100%" stopColor="#f36969" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {tokens.map((t) => (
-              <div
-                key={t.symbol}
-                className="glass-card relative overflow-hidden p-4 transition hover:border-emerald-400/30 hover:shadow-[0_0_28px_rgba(34,197,94,0.12)]"
-              >
-                <div className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rounded-full bg-emerald-400/10 blur-2xl" />
-                <div className="relative flex items-start justify-between">
-                  <div>
-                    <p className="text-[11px] dash-muted">{t.name}</p>
-                    <p className="mt-1 font-mono text-lg font-medium text-emerald-50">
-                      {loading ? '…' : formatBalance(t.balance, t.symbol === 'USDT' ? 2 : 8)}
-                    </p>
-                    <p className="mt-1 text-xs text-emerald-200/40">{formatUsd(t.usd)}</p>
-                  </div>
-                  <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] text-emerald-200/90">
-                    {t.symbol}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-5 lg:grid-rows-[minmax(480px,1fr)]">
-            <div className="glass-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-3">
-              <div className="mb-2 shrink-0 px-2 pt-1">
-                <h2 className="text-sm font-medium text-emerald-50">Markets</h2>
-                <p className="text-[11px] dash-muted">TradingView chart</p>
-              </div>
-              <div className="relative min-h-[400px] flex-1 overflow-hidden rounded-xl border border-emerald-500/15 bg-black/40">
-                <div className="absolute inset-0">
-                  <TradingViewChart fill />
-                </div>
-              </div>
-            </div>
-            <div className="glass-card flex min-h-[420px] flex-col overflow-hidden p-3 lg:col-span-2">
-              <div className="mb-2 shrink-0 px-2 pt-1">
-                <h2 className="text-sm font-medium text-emerald-50">Crypto news</h2>
-                <p className="text-[11px] dash-muted">TradingView · auto-refreshes every 90s</p>
-              </div>
-              <div className="relative flex min-h-[400px] flex-1 flex-col overflow-hidden rounded-xl border border-emerald-500/15 bg-black/40 p-2">
-                <div className="min-h-0 flex-1">
-                  <TradingViewNews fill />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-card overflow-hidden">
-            <div className="flex items-center justify-between border-b dash-divider px-5 py-4">
-              <h2 className="text-sm font-medium text-emerald-50">Recent activity</h2>
-              <Link to="/app/activity" className="text-xs text-emerald-300/50 hover:text-emerald-200">
-                View all
-              </Link>
-            </div>
-            {txs.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-emerald-200/35">No transactions yet</p>
-            ) : (
-              <div className="divide-y divide-emerald-500/10">
-                {txs.map((tx) => {
-                  const recv = (tx.transaction_type || '').toLowerCase() === 'received'
-                  return (
-                    <div
-                      key={tx.txid + tx.date}
-                      className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-emerald-500/[0.04]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={cn(
-                            'flex h-9 w-9 items-center justify-center rounded-full border',
-                            recv
-                              ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300'
-                              : 'border-emerald-500/15 bg-black/30 text-emerald-100/70'
-                          )}
-                        >
-                          {recv ? (
-                            <ArrowDownLeft className="h-4 w-4" />
-                          ) : (
-                            <ArrowUpRight className="h-4 w-4" />
-                          )}
-                        </span>
-                        <div>
-                          <p className="text-sm font-medium text-emerald-50">{tx.transaction_type}</p>
-                          <p className="font-mono text-xs text-emerald-200/35">
-                            {shortAddress(tx.txid, 10, 8)} · {formatDate(tx.date)}
-                          </p>
-                        </div>
-                      </div>
-                      <p className={cn('font-mono text-sm', recv ? 'text-emerald-300' : 'text-emerald-50/85')}>
-                        {recv ? '+' : '−'}
-                        {formatBalance(tx.amount)} {tx.coin}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        </aside>
       </div>
-    </div>
+      <div className="credit">CoinCloud — live balances, gas, alerts, and on-chain activity</div>
+
+      {picked && (
+        <>
+          <button type="button" className="drawer-bg" onClick={() => setPicked(null)} aria-label="Close" />
+          <aside className="drawer">
+            <div className="card-head">
+              <div className="card-head-left">
+                <CoinIcon symbol={picked.symbol} />
+                <div>
+                  <div className="wl-name">{picked.name}</div>
+                  <div className="wl-price">{picked.symbol}</div>
+                </div>
+              </div>
+              <button type="button" className="expand-btn" onClick={() => setPicked(null)}>×</button>
+            </div>
+            <div className="balance-amount" style={{ fontSize: 28, margin: '8px 0 4px' }}>
+              {hideBalances ? '••••' : formatUsd(picked.usd)}
+            </div>
+            <div className="wl-price" style={{ marginBottom: 16 }}>
+              {hideBalances ? '••••' : `${formatBalance(picked.balance, 8)} ${picked.symbol}`} · {formatUsd(picked.price)}
+            </div>
+            <Change value={picked.change} />
+            <div className="balance-actions" style={{ marginTop: 22 }}>
+              <Link to="/app/send" className="vx-btn btn-accent">Send</Link>
+              <Link to="/app/receive" className="vx-btn btn-ghost">Receive</Link>
+            </div>
+            <button
+              type="button"
+              className="vx-btn btn-ghost"
+              style={{ width: '100%', marginTop: 10 }}
+              onClick={() => {
+                setChartSymbol(picked.symbol)
+                setPicked(null)
+              }}
+            >
+              View chart
+            </button>
+          </aside>
+        </>
+      )}
+    </>
   )
 }
