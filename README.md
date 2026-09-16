@@ -33,7 +33,7 @@ Modern rebuild of the original Flask + HTML wallet:
 - Search users by name / email / address
 - Promote / revoke admin, enable / disable accounts
 - Delete users (with bitcoinlib wallet cleanup)
-- Application send
+- Application send.
 
 ## Project layout
 
